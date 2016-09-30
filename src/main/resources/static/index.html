@@ -1,0 +1,139 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+        "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+    <head>
+        <title>CompletableFuture examples</title>
+        <link rel="stylesheet" type="text/css" href="http://cdn.datatables.net/1.10.12/css/jquery.dataTables.min.css">
+    </head>
+    <body>
+        <div align="center" style="width:900px;">
+            <label>
+                Json page
+                <select name="pageType" id="pageType">
+                    <option value="synch">synch</option>
+                    <option value="future">future</option>
+                    <option value="combine">combine</option>
+                    <option value="stream">stream</option>
+                    <option value="parallelstream">parallelstream</option>
+                </select>
+            </label>
+
+            <label>
+                Number of messages
+                <input type="text" name="messagesCount" id="messagesCount" value="10" />
+            </label>
+
+            <button onclick="reloadMessages()">Reload</button>
+            <br/>
+            <br/>
+            Min Time <span name = "min" id = "min">?</span>
+            Max Time <span name = "max" id = "max">?</span>
+            Total Time <span name = "totalTime" id = "totalTime">?</span>
+            Sleep Time <span name = "sleepTime" id = "sleepTime">?</span>
+            Work time <span name = "workTime" id = "workTime">?</span>
+
+            <br/>
+            <table id="messageTable" class="display" width="100%" cellspacing="0">
+                <thead>
+                <tr>
+                    <th>Message</th>
+                    <th>start Date</th>
+                    <th>created Date</th>
+                    <th>Thread Name</th>
+                    <th>Sleep Time</th>
+                </tr>
+                </thead>
+            </table>
+        </div>
+
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.12.3/jquery.min.js"></script>
+        <script type="text/javascript" src="http://cdn.datatables.net/1.10.12/js/jquery.dataTables.min.js" ></script>
+
+        <script type="text/javascript">
+            $(document).ready(function() {
+                setMessages();
+            });
+
+            function setMessages() {
+                var page = '/m'
+                        + $('#messagesCount').val()
+                        + '/'
+                        + $('#pageType option:selected').text();
+
+                $('#messageTable').dataTable({
+                    paging: false,
+                    searching: false,
+                    ajax: {
+                        url: page,
+                        dataSrc: function (json) {
+                            var messages = json.messages;
+
+                            var min = Math.min.apply(null, messages.map(function(item) {
+                                return item.startCreationDate;
+                            }));
+
+                            var max = Math.max.apply(null, messages.map(function(item) {
+                                return item.createdDate;
+                            }));
+
+                            var sum = messages.reduce(
+                                    function(m1, m2) {
+                                        return {sleepTime: m1.sleepTime + m2.sleepTime}
+                                    },
+                                    {sleepTime: 0});
+
+                            setTime(min, max, max - min, sum.sleepTime, max - min - sum.sleepTime);
+                            return messages;
+                        }
+                    },
+                    columns: [
+                        {data: 'message'},
+                        {data: 'startCreationDate',
+                            type: 'date ',
+                            render:function (value) {
+                                return formatDate(value);
+                            }
+                        },
+                        {data: 'createdDate',
+                            type: 'date ',
+                            render:function (value) {
+                                return formatDate(value);
+                            }
+                        },
+                        {data: 'threadName'},
+                        {data: 'sleepTime'}
+                    ]
+                });
+            }
+
+            function reloadMessages() {
+                setTime('?', '?', '?', '?', '?');
+                $('#messageTable').DataTable().destroy();
+                setMessages();
+            }
+
+            function formatDate(value) {
+                if (value === null) return "";
+
+                value = '' + value;
+                var ln = value.length;
+                if (ln <= 3) return value;
+                if (ln <= 5) return value.substring(0, ln - 3)
+                        + '.' + value.substring(ln - 3);
+
+                return value.substring(0, ln - 5)
+                        + ':' + value.substring(ln - 5, ln - 3)
+                        + '.' + value.substring(ln - 3);
+            }
+
+            function setTime(min, max, totalTime, sleepTime, workTime) {
+                $('#min').html(formatDate(min));
+                $('#max').html(formatDate(max));
+                $('#totalTime').html(formatDate(totalTime));
+                $('#sleepTime').html(formatDate(sleepTime));
+                $('#workTime').html(formatDate(workTime));
+            }
+
+        </script>
+    </body>
+</html>
